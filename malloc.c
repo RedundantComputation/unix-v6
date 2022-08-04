@@ -63,3 +63,76 @@ struct map *mp;
     return (0);
 }
 /* ------------------------------------------- */
+
+/*
+ * Free the previously allocated space aa
+ * of size units into the specified map.
+ * Sort aa into map and combine on one or both ends
+ * if possible.
+*/ 
+mfree(mp, size, aa)
+struct map *mp;
+{
+    register struct map *bp;
+    register int t;
+    register int a;
+
+    a = aa;
+    /* Keep iterating through the list as long as the address
+     * of the current element is smaller than the address
+     * we are trying to return and we have not yet hit the
+     * sentinel node.
+    */  
+    for (bp = mp; bp->m_addr <= a && bp->m_size != 0; bp++)
+        ;
+    
+    /* We have now located the element in front of which we
+     * should insert back the freed space. First check to see
+     * if we are trying to insert at the beginning of the list.
+     * Control moves to else case if we are.
+    */
+   if (bp > mp) {
+    // Does previous element abut the space we are trying to add?
+        if ((bp-1)->m_addr+(bp-1)->m_size == a) {
+            (bp-1)->m_size =+ size;
+            /* Does inserting the freed space abut the next element?
+             * If execution continues into here this means we are reducing
+             * the list in size by one.
+            */ 
+            if (a+size == bp->m_addr) {
+                (bp-1)->m_size  =+ bp->m_size;
+                // shift all elements backwards due to amalgamation
+                while (bp->m_size > 0) {
+                    bp++;
+                    (bp-1)->m_addr = bp->m_addr;
+                    (bp-1)->m_size = bp->m_size;
+                }
+            }
+        }
+   } else {
+        /* Newly freed space cannot be amalgamated with previous element
+         * but can it be amalgamated with the next element?
+        */
+        if (a+size == bp->m_addr && bp->m_size > 0) {
+            bp->m_addr =- size;
+            bp->m_size =+ size;
+            /* For some reason *now* we ensure we are not returning
+             * a non-zero space, and if so then insert the new element
+             * and shift all the elements down one.
+            */
+        } else if (size) do {
+            // save the address of the old base pointer of the list
+            t = bp->m_addr;
+            // point base pointer to address of newly freed space
+            bp->m_addr = a;
+            // assign a to old base pointer address
+            a = t;
+            // save the size of the old base pointer list element
+            t = bp->m_size;
+            // update the base pointer to have the size of the newly freed space
+            bp->m_size = size;
+            bp++;
+        } while (size = t);
+   }
+}
+/* ------------------------------------------------------ */
